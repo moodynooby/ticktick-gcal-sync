@@ -15,7 +15,12 @@ Free 1-way sync using only official free APIs + GitHub Actions (public repo = un
    - OAuth consent screen -> External -> add yourself as test user
    - Credentials -> Create OAuth Client ID -> Desktop app -> download as `credentials.json`
    - Install dependencies with `uv sync`, then run locally once: `uv run ticktick_gcal_sync.py --auth-gcal` (creates `token.json`)
-   - You can put local variables such as `TICKTICK_ACCESS_TOKEN` in a `.env` file; the script loads it automatically. Shell environment variables take precedence.
+    - Create a local `.env` file for development:
+       ```dotenv
+       TICKTICK_ACCESS_TOKEN=your_ticktick_token
+       GCAL_CALENDAR_ID=primary
+       ```
+    - The script loads `.env` automatically. Shell environment variables take precedence.
 3. **Local test:**
    ```bash
    export TICKTICK_ACCESS_TOKEN="..."
@@ -26,10 +31,20 @@ Free 1-way sync using only official free APIs + GitHub Actions (public repo = un
    ```
 4. **GitHub Actions (public repo = free unlimited):**
    - Push this folder to a new **public** repo
-   - Repo Settings -> Secrets -> Actions, add:
+    - Add these repository secrets under **Settings -> Secrets and variables -> Actions**:
      - `TICKTICK_ACCESS_TOKEN`
      - `GCAL_TOKEN_JSON` = full contents of `token.json`
      - `GCAL_CALENDAR_ID` (optional, default `primary`)
+       - `TICKTICK_PROJECT_IDS` (optional, comma-separated project IDs)
+    - With GitHub CLI, run these commands from the project directory:
+       ```bash
+       gh secret set TICKTICK_ACCESS_TOKEN --body "$(sed -n 's/^TICKTICK_ACCESS_TOKEN=//p' .env)"
+       gh secret set GCAL_TOKEN_JSON < token.json
+       gh secret set GCAL_CALENDAR_ID --body "primary"
+       # Optional:
+       gh secret set TICKTICK_PROJECT_IDS --body "project-id-1,project-id-2"
+       ```
+    - Do not commit `.env`, `credentials.json`, or `token.json`; they are already ignored by `.gitignore`.
    - Workflow `.github/workflows/sync.yml` runs every 30 min (~1440 min/mo, safe even for private). Manual run via Actions tab.
    - `state.json` is committed back automatically (needs `contents: write`).
 
