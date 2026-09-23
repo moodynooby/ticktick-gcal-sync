@@ -1,0 +1,39 @@
+name: ticktick-gcal-sync
+
+on:
+  schedule:
+    # Every 30 min. Public repo = unlimited free minutes.
+    # 96 runs/day * ~1 min = ~1440 min/mo (safe even on private Free 2000/mo).
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.16"
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Sync TickTick -> Google Calendar
+        env:
+          TICKTICK_ACCESS_TOKEN: ${{ secrets.TICKTICK_ACCESS_TOKEN }}
+          GCAL_TOKEN_JSON: ${{ secrets.GCAL_TOKEN_JSON }}
+          GCAL_CALENDAR_ID: ${{ secrets.GCAL_CALENDAR_ID }}
+          TICKTICK_PROJECT_IDS: ${{ secrets.TICKTICK_PROJECT_IDS }}
+        run: uv run ticktick_gcal_sync.py
+      - name: Commit state
+        run: |
+          git config user.name "ticktick-sync-bot"
+          git config user.email "ticktick-sync-bot@users.noreply.github.com"
+          git add state.json
+          git diff --cached --quiet || git commit -m "sync state $(date -u +%FT%TZ)"
+          git push

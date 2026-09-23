@@ -1,0 +1,23 @@
+[project]
+name = "ticktick-gcal-sync"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Manas Doshi", email = "98732831+moodynooby@users.noreply.github.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "google-api-python-client>=2.180.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.2.2",
+    "python-dotenv>=1.1.1",
+    "requests>=2.34.2",
+]
+
+[project.scripts]
+ticktick-gcal-sync = "ticktick_gcal_sync:main"
+
+[build-system]
+requires = ["uv_build>=0.12.16,<0.13.0"]
+build-backend = "uv_build"
