@@ -2,3 +2,6 @@ __pycache__/
 token.json
 credentials.json
 .env
+.tools/
+.schedule_ocr_*.json
+Screenshot from *.png

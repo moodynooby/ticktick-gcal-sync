@@ -27,9 +27,10 @@ jobs:
         env:
           TICKTICK_ACCESS_TOKEN: ${{ secrets.TICKTICK_ACCESS_TOKEN }}
           GCAL_TOKEN_JSON: ${{ secrets.GCAL_TOKEN_JSON }}
-          GCAL_CALENDAR_ID: ${{ secrets.GCAL_CALENDAR_ID }}
+          # Optional secret: falls back to "primary" when unset (empty string also handled in code).
+          GCAL_CALENDAR_ID: ${{ secrets.GCAL_CALENDAR_ID || 'primary' }}
           TICKTICK_PROJECT_IDS: ${{ secrets.TICKTICK_PROJECT_IDS }}
-        run: uv run ticktick_gcal_sync.py
+        run: uv run ticktick-gcal-sync
       - name: Commit state
         run: |
           git config user.name "ticktick-sync-bot"
