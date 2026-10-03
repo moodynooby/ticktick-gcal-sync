@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import Mock
 
 import schedule_ocr_gcal_sync as importer
 
@@ -126,78 +127,54 @@ class ScheduleOcrTests(unittest.TestCase):
         self.assertNotEqual(importer.subject_color(first), importer.subject_color(other))
 
     def test_resolves_exact_google_palette_ids(self) -> None:
-        class FakeExecutable:
-            def __init__(self, value: dict[str, dict[str, str]]) -> None:
-                self.value = value
+        service = Mock()
+        service.colors().get().execute.return_value = {
+            "event": {
+                "2": {"background": "#7ae7bf"},
+                "3": {"background": "#dbadff"},
+                "4": {"background": "#ff887c"},
+                "6": {"background": "#ffb878"},
+                "7": {"background": "#46d6db"},
+                "9": {"background": "#5484ed"},
+                "10": {"background": "#51b749"},
+                "11": {"background": "#dc2127"},
+            }
+        }
 
-            def execute(self) -> dict[str, dict[str, dict[str, str]]]:
-                return {"event": self.value}
-
-        class FakeColors:
-            def __init__(self, value: dict[str, dict[str, str]]) -> None:
-                self.executable = FakeExecutable(value)
-
-            def get(self) -> FakeExecutable:
-                return self.executable
-
-        class FakeService:
-            def colors(self) -> FakeColors:
-                return FakeColors(
-                    {
-                        "2": {"background": "#7ae7bf"},
-                        "3": {"background": "#dbadff"},
-                        "4": {"background": "#ff887c"},
-                        "6": {"background": "#ffb878"},
-                        "7": {"background": "#46d6db"},
-                        "9": {"background": "#5484ed"},
-                        "10": {"background": "#51b749"},
-                        "11": {"background": "#dc2127"},
-                    }
-                )
-
-        resolved = importer.resolve_event_color_ids(FakeService())
+        resolved = importer.resolve_event_color_ids(service)
         self.assertEqual(resolved["#7ae7bf"], "2")
         self.assertEqual(resolved["#5484ed"], "9")
         self.assertEqual(resolved["#dc2127"], "11")
         self.assertEqual(len(set(resolved.values())), 8)
 
-    def test_location_is_required(self) -> None:
-        lesson = importer.Lesson(
-            day="TUESDAY",
-            start="08:00",
-            end="09:30",
-            name="ENR207 — Electric and Magnetic circuits",
-            code="ENR207",
-            title="Electric and Magnetic circuits",
-            section="1",
-            starts_on="2026-08-03",
-            ends_on="2026-11-22",
-            location="",
-            ocr_confidence=94.0,
-            raw_ocr="",
-        )
-        self.assertIn("Event location is empty.", importer.validate_lesson(lesson))
-
-    def test_incomplete_preview_lesson_reaches_validation(self) -> None:
-        lesson = importer.Lesson.from_dict(
-            {
-                "day": "MONDAY",
-                "start": "10:00",
-                "end": "11:00",
-                "name": "Example",
-                "code": "",
-                "title": "Example",
-                "section": "1",
-                "starts_on": "",
-                "ends_on": "",
-                "location": "",
-                "ocr_confidence": 80.0,
-                "raw_ocr": "Example",
-            }
-        )
-        errors = importer.validate_lesson(lesson)
-        self.assertIn("Event location is empty.", errors)
-        self.assertIn("Course date range is invalid.", errors)
+    def test_validate_lesson_blocks_incomplete_lessons(self) -> None:
+        base = {
+            "day": "TUESDAY",
+            "start": "08:00",
+            "end": "09:30",
+            "name": "ENR207 — Electric and Magnetic circuits",
+            "code": "ENR207",
+            "title": "Electric and Magnetic circuits",
+            "section": "1",
+            "starts_on": "2026-08-03",
+            "ends_on": "2026-11-22",
+            "location": "Room 101",
+            "ocr_confidence": 94.0,
+            "raw_ocr": "",
+        }
+        cases = [
+            ("missing location", {**base, "location": ""}, ["Event location is empty."]),
+            (
+                "missing location and dates",
+                {**base, "location": "", "starts_on": "", "ends_on": ""},
+                ["Event location is empty.", "Course date range is invalid."],
+            ),
+        ]
+        for label, fields, expected in cases:
+            with self.subTest(label):
+                errors = importer.validate_lesson(importer.Lesson.from_dict(fields))
+                for message in expected:
+                    self.assertIn(message, errors)
 
 
 if __name__ == "__main__":

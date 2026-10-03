@@ -47,17 +47,20 @@ class TaskToEventTests(unittest.TestCase):
 class SyncDaysPastTests(unittest.TestCase):
     """The README documents SYNC_DAYS_PAST; the constant must do something."""
 
-    def test_task_older_than_window_is_skipped(self) -> None:
-        task = {"id": "d", "dueDate": "2026-08-15T09:00:00+0000"}
-        self.assertTrue(sync.is_too_old(task, date(2026, 10, 3), days_past=30))
-
-    def test_task_inside_window_is_kept(self) -> None:
-        task = {"id": "e", "dueDate": "2026-09-20T09:00:00+0000"}
-        self.assertFalse(sync.is_too_old(task, date(2026, 10, 3), days_past=30))
-
-    def test_boundary_day_is_kept(self) -> None:
-        task = {"id": "f", "dueDate": "2026-09-03T09:00:00+0000"}
-        self.assertFalse(sync.is_too_old(task, date(2026, 10, 3), days_past=30))
+    def test_window_boundaries(self) -> None:
+        cases = [
+            ("2026-08-15T09:00:00+0000", True),  # older than 30d window
+            ("2026-09-20T09:00:00+0000", False),  # inside window
+            ("2026-09-03T09:00:00+0000", False),  # boundary day kept
+        ]
+        for due, expected in cases:
+            with self.subTest(due=due):
+                self.assertEqual(
+                    sync.is_too_old(
+                        {"id": "d", "dueDate": due}, date(2026, 10, 3), days_past=30
+                    ),
+                    expected,
+                )
 
     def test_task_without_due_date_is_not_classified_stale(self) -> None:
         task = {"id": "g", "startDate": "2020-01-01T09:00:00+0000"}

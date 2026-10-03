@@ -214,11 +214,9 @@ def parse_date(
     year = int(year_token.upper().replace("O", "0"))
     if year < 100:
         year += 2000
-    if date_order == "MDY":
-        month, day = first, second
-    elif first > 12 and second <= 12:
-        day, month = first, second
-    elif second > 12 and first <= 12:
+    # MDY is explicit. Otherwise disambiguate on the value >12; ambiguous
+    # pairs default to DMY (the documented --date-order default).
+    if date_order == "MDY" or (second > 12 >= first):
         month, day = first, second
     else:
         day, month = first, second
@@ -872,19 +870,14 @@ def resolve_event_color_ids(service: Any) -> dict[str, str]:
         raise ImportFailure("Google Calendar returned no writable event colors.")
 
     result: dict[str, str] = {}
+    by_hex = {
+        str(definition.get("background", "")).removeprefix("#").upper(): str(color_id)
+        for color_id, definition in available.items()
+    }
     for wanted in set(SUBJECT_COLORS.values()):
-        wanted_key = wanted.removeprefix("#").upper()
-        exact = next(
-            (
-                color_id
-                for color_id, definition in available.items()
-                if str(definition.get("background", "")).removeprefix("#").upper()
-                == wanted_key
-            ),
-            None,
-        )
+        exact = by_hex.get(wanted.removeprefix("#").upper())
         if exact is not None:
-            result[wanted] = str(exact)
+            result[wanted] = exact
             continue
         nearest_id = min(available, key=lambda color_id: color_distance(wanted, available[color_id]))
         result[wanted] = str(nearest_id)
